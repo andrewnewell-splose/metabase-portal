@@ -1,0 +1,596 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f3efe7;
+    --surface:#fffdf8;
+    --ink:#1c1b18;
+    --muted:#736f66;
+    --line:#e4ddcf;
+    --line-strong:#d6cdb9;
+    --accent:#1f5641;
+    --accent-ink:#0e3326;
+    --accent-soft:#e7efe8;
+    --gold:#b07b2e;
+    --danger:#a23b2d;
+    --shadow:0 1px 2px rgba(28,27,24,.04),0 8px 24px rgba(28,27,24,.06);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 85% -10%, #eae0cf55, transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Instrument Sans",ui-sans-serif,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding:32px 24px 80px;
+  }
+  .wrap{max-width:1120px;margin:0 auto}
+
+  /* Header */
+  header.top{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:24px;flex-wrap:wrap;margin-bottom:28px;
+  }
+  .brand h1{
+    font-family:"Bricolage Grotesque",serif;
+    font-weight:800;font-size:clamp(30px,4.5vw,46px);
+    letter-spacing:-.02em;line-height:1;margin:0 0 6px;
+  }
+  .brand .sub{color:var(--muted);font-size:15px}
+  .brand .sub b{color:var(--accent-ink);font-weight:600}
+  .head-actions{display:flex;gap:10px;align-items:center}
+
+  /* Buttons */
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;
+    transition:transform .12s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:var(--shadow)}
+  .btn-primary:hover{background:var(--accent-ink)}
+  .btn-ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line-strong)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent-ink)}
+  .icon{width:16px;height:16px;display:inline-block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* Toolbar */
+  .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:26px}
+  .search{position:relative;flex:1;min-width:220px}
+  .search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;stroke:var(--muted);fill:none;stroke-width:2}
+  .search input{
+    width:100%;padding:12px 14px 12px 40px;border-radius:11px;
+    border:1px solid var(--line-strong);background:var(--surface);
+    font-family:inherit;font-size:15px;color:var(--ink);outline:none;
+    transition:border .15s ease, box-shadow .15s ease;
+  }
+  .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .filters{display:flex;gap:7px;flex-wrap:wrap}
+  .chip{
+    padding:8px 13px;border-radius:999px;font-size:13px;font-weight:600;
+    border:1px solid var(--line-strong);background:var(--surface);color:var(--muted);
+    transition:all .14s ease;
+  }
+  .chip:hover{border-color:var(--accent)}
+  .chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* Section */
+  .section{margin-bottom:34px;animation:rise .5s ease both}
+  .section h2{
+    font-family:"Bricolage Grotesque",serif;font-weight:700;
+    font-size:14px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 14px;display:flex;align-items:center;gap:10px;
+  }
+  .section h2::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* Grid + cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .card{
+    position:relative;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);
+    transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    display:flex;flex-direction:column;min-height:138px;
+    animation:rise .5s ease both;
+  }
+  .card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(28,27,24,.05),0 16px 36px rgba(28,27,24,.1);border-color:var(--line-strong)}
+  .card .cat{
+    font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:9px;
+  }
+  .card h3{font-family:"Bricolage Grotesque",serif;font-weight:700;font-size:19px;letter-spacing:-.01em;margin:0 0 6px;line-height:1.2}
+  .card p{color:var(--muted);font-size:13.5px;line-height:1.45;margin:0 0 16px;flex:1}
+  .card .open{
+    display:inline-flex;align-items:center;gap:7px;align-self:flex-start;
+    color:var(--accent-ink);font-weight:600;font-size:14px;text-decoration:none;
+    padding:7px 0;
+  }
+  .card .open:hover{gap:11px}
+  .card .open svg{transition:transform .15s ease}
+  .card-tools{position:absolute;top:14px;right:14px;display:flex;gap:4px;opacity:0;transition:opacity .15s ease}
+  .card:hover .card-tools{opacity:1}
+  .tool{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:#fff;border:1px solid var(--line);color:var(--muted)}
+  .tool:hover{color:var(--ink);border-color:var(--line-strong)}
+  .tool.pin.on{color:var(--gold);border-color:#e4cfa3;background:#fdf6e9}
+  .tool .icon{width:15px;height:15px}
+
+  /* Empty state */
+  .empty{
+    text-align:center;padding:70px 24px;border:1.5px dashed var(--line-strong);
+    border-radius:var(--radius);background:#fffdf850;
+  }
+  .empty .ico{width:46px;height:46px;margin:0 auto 16px;color:var(--accent);opacity:.8}
+  .empty h3{font-family:"Bricolage Grotesque",serif;font-size:22px;margin:0 0 8px}
+  .empty p{color:var(--muted);max-width:430px;margin:0 auto 22px;line-height:1.55}
+
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(28,27,24,.42);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:60px 20px;z-index:50;overflow:auto}
+  .overlay.show{display:flex;animation:fade .2s ease}
+  .modal{background:var(--surface);border-radius:18px;width:100%;max-width:480px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.3);animation:pop .22s cubic-bezier(.2,.9,.3,1.3) both}
+  .modal h2{font-family:"Bricolage Grotesque",serif;font-size:23px;margin:0 0 4px}
+  .modal .lead{color:var(--muted);font-size:14px;margin:0 0 20px;line-height:1.5}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  .field .hint{color:var(--muted);font-weight:400;font-size:12px}
+  .field input,.field textarea{
+    width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line-strong);
+    background:#fff;font-family:inherit;font-size:14.5px;color:var(--ink);outline:none;resize:vertical;
+    transition:border .15s ease, box-shadow .15s ease;
+  }
+  .field input:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+  .cat-suggest{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .cat-suggest button{font-size:12px;padding:5px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+  .cat-suggest button:hover{background:#d9e6db}
+  .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:#fff}
+  .seg button{padding:9px 18px;font-size:13.5px;font-weight:600;color:var(--muted);background:#fff;transition:all .14s ease}
+  .seg button.active{background:var(--accent);color:#fff}
+  .seg button:not(.active):hover{color:var(--accent-ink)}
+
+  .footnote{text-align:center;color:var(--muted);font-size:12.5px;margin-top:46px}
+  .footnote code{background:#fff;border:1px solid var(--line);padding:2px 6px;border-radius:6px;font-size:12px}
+
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes pop{from{opacity:0;transform:scale(.96) translateY(6px)}to{opacity:1;transform:none}}
+  @media(max-width:540px){
+    body{padding:22px 16px 60px}
+    .head-actions{width:100%}
+    .head-actions .btn{flex:1;justify-content:center}
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Dashboard Portal</h1>
+      <div class="sub">Your launchpad into <b id="hostLabel">Metabase</b></div>
+    </div>
+    <div class="head-actions">
+      <button class="btn btn-ghost" id="settingsBtn">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.2.61.78 1.05 1.51 1.05H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Base URL
+      </button>
+      <button class="btn btn-primary" id="addBtn">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Add dashboard
+      </button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="searchInput" type="text" placeholder="Search dashboards…" autocomplete="off">
+    </div>
+    <div class="filters" id="filters"></div>
+  </div>
+
+  <div id="content"></div>
+
+  <div class="footnote">
+    Saved automatically in this artifact. Tip: paste a full Metabase link (dashboard or question) and the type is detected for you.
+  </div>
+</div>
+
+<!-- Add / edit modal -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h2 id="modalTitle">Add a dashboard</h2>
+    <p class="lead">Paste the Metabase link or just the dashboard ID. Everything else is optional.</p>
+    <div class="field">
+      <label>Link or ID <span class="hint">e.g. https://splose.metabaseapp.com/dashboard/42 or just 42</span></label>
+      <input id="fLink" type="text" placeholder="42  ·  or full URL">
+    </div>
+    <div class="field">
+      <label>Type <span class="hint">used when you enter just an ID; auto-detected from full links</span></label>
+      <div class="seg" id="typeSeg">
+        <button type="button" data-type="dashboard" class="active">Dashboard</button>
+        <button type="button" data-type="question">Question</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Name</label>
+      <input id="fName" type="text" placeholder="Revenue overview">
+    </div>
+    <div class="field">
+      <label>Description <span class="hint">optional</span></label>
+      <textarea id="fDesc" rows="2" placeholder="What this dashboard is for"></textarea>
+    </div>
+    <div class="field">
+      <label>Category <span class="hint">optional</span></label>
+      <input id="fCat" type="text" placeholder="e.g. Finance, Growth, Product">
+      <div class="cat-suggest" id="catSuggest"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn">Save dashboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="overlay" id="settingsModal">
+  <div class="modal">
+    <h2>Metabase base URL</h2>
+    <p class="lead">Used to build links when you enter just a dashboard ID. Changing it won't affect dashboards you saved as full URLs.</p>
+    <div class="field">
+      <label>Base URL</label>
+      <input id="fBase" type="text" placeholder="https://splose.metabaseapp.com">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="settingsCancel">Cancel</button>
+      <button class="btn btn-primary" id="settingsSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY = "portal-data";
+const DEFAULT_BASE = "https://splose.metabaseapp.com";
+
+// Baked-in starting set. Anyone opening a fresh copy of the hosted page sees these.
+const SEED = {
+  baseUrl: DEFAULT_BASE,
+  dashboards: [
+    {
+      id: "seed-shared-question",
+      url: "https://splose.metabaseapp.com/public/question/2f86c6af-86b3-42c9-a860-ff8d5e3006d3",
+      name: "Pipeline Slippage Report",
+      description: "Public Metabase question.",
+      category: "Shared",
+      type: "question",
+      pinned: true,
+      autoName: false
+    }
+  ]
+};
+
+let state = { baseUrl: DEFAULT_BASE, dashboards: [] };
+let activeFilter = "All";
+let searchTerm = "";
+
+/* ---------- storage adapter ----------
+   Uses Claude's artifact storage when present (preview inside Claude),
+   otherwise falls back to the browser's localStorage (hosted anywhere). */
+const hasClaudeStorage = (typeof window !== "undefined") && window.storage && typeof window.storage.get === "function";
+async function storeGet(key){
+  if(hasClaudeStorage){
+    try{ const r = await window.storage.get(key); return (r && r.value) ? r.value : null; }
+    catch(e){ return null; }
+  }
+  try{ return localStorage.getItem(key); }catch(e){ return null; }
+}
+async function storeSet(key, val){
+  if(hasClaudeStorage){
+    try{ await window.storage.set(key, val); }catch(e){ console.error("save failed", e); }
+    return;
+  }
+  try{ localStorage.setItem(key, val); }catch(e){ console.error("save failed", e); }
+}
+
+/* ---------- persistence ---------- */
+async function load(){
+  const raw = await storeGet(KEY);
+  if(raw){
+    try{
+      const parsed = JSON.parse(raw);
+      state = { baseUrl: parsed.baseUrl || DEFAULT_BASE, dashboards: parsed.dashboards || [] };
+      return;
+    }catch(e){ /* fall through to seed */ }
+  }
+  state = { baseUrl: SEED.baseUrl, dashboards: SEED.dashboards.map(d=>({...d})) };
+  await save();
+}
+async function save(){
+  await storeSet(KEY, JSON.stringify(state));
+}
+
+let editingId = null;
+let chosenType = "dashboard";
+function setTypeUI(t){
+  chosenType = (t==="question") ? "question" : "dashboard";
+  document.querySelectorAll("#typeSeg button").forEach(b=>b.classList.toggle("active", b.dataset.type===chosenType));
+}
+
+/* ---------- helpers ---------- */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+function resolveUrl(d){
+  if(d.url && /^https?:\/\//i.test(d.url)) return d.url;
+  const base = state.baseUrl.replace(/\/+$/,"");
+  const type = d.type==="question" ? "question" : "dashboard";
+  return base + "/" + type + "/" + encodeURIComponent(d.url);
+}
+function esc(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function hostName(){
+  try{ return new URL(state.baseUrl).host; }catch(e){ return "Metabase"; }
+}
+// Parse a pasted link/ID into {url, suggestedName}
+function parseLink(raw){
+  raw = (raw||"").trim();
+  if(!raw) return {url:"", name:"", type:null};
+  const m = raw.match(/\/(dashboard|question)\/([0-9]+)(?:-([a-z0-9-]+))?/i);
+  if(/^https?:\/\//i.test(raw)){
+    let name = "", type = null;
+    if(m){ type = m[1].toLowerCase(); if(m[3]) name = m[3].replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()); }
+    return {url:raw, name, type};
+  }
+  return {url:raw, name:"", type:null};
+}
+
+/* ---------- best-effort auto-naming ----------
+   Order: (1) same-origin Vercel function /api/mb-name (no CORS, works when deployed),
+   then (2) a direct call to Metabase (only works same-origin / CORS-permissive).
+   If both are blocked, the stored/manual name is kept. */
+function resourceOf(d){
+  const url = d.url || "";
+  const pub = url.match(/\/public\/(question|dashboard)\/([0-9a-fA-F-]{36})/);
+  if(pub) return { type:"public", kind: pub[1].toLowerCase()==="dashboard"?"dashboard":"card", id: pub[2] };
+  const internal = url.match(/\/(question|dashboard)\/([0-9]+)/);
+  const id = /^[0-9]+$/.test(url) ? url : (internal ? internal[2] : null);
+  if(!id) return null;
+  const kind = (internal ? internal[1].toLowerCase() : d.type)==="dashboard" ? "dashboard" : "card";
+  return { type:"internal", kind, id };
+}
+async function fetchName(d){
+  const r = resourceOf(d);
+  if(!r) return null;
+  // 1) Vercel serverless proxy (same-origin -> no CORS)
+  try{
+    const q = `/api/mb-name?type=${r.type}&kind=${r.kind}&id=${encodeURIComponent(r.id)}`;
+    const resp = await fetch(q, { headers:{ "Accept":"application/json" } });
+    if(resp.ok){ const j = await resp.json(); if(j && j.name) return j.name; }
+  }catch(e){ /* no proxy here */ }
+  // 2) direct call to Metabase
+  try{
+    const base = state.baseUrl.replace(/\/+$/,"");
+    const path = r.type==="public" ? `/api/public/${r.kind}/${r.id}` : `/api/${r.kind}/${r.id}`;
+    const resp = await fetch(base + path, { credentials:"include", headers:{ "Accept":"application/json" } });
+    if(resp.ok){ const j = await resp.json(); if(j && j.name) return j.name; }
+  }catch(e){ /* CORS / network */ }
+  return null;
+}
+async function refreshNames(){
+  const targets = state.dashboards.filter(d=>d.autoName);
+  if(!targets.length) return;
+  let changed = false;
+  for(const d of targets){
+    const name = await fetchName(d);
+    if(name && name !== d.name){ d.name = name; changed = true; }
+    if(name){ d.autoName = false; } // got it once, stop re-asking
+  }
+  if(changed){ await save(); render(); }
+}
+
+/* ---------- render ---------- */
+function categories(){
+  const set = new Set();
+  state.dashboards.forEach(d=>{ if(d.category) set.add(d.category); });
+  return [...set].sort((a,b)=>a.localeCompare(b));
+}
+function render(){
+  document.getElementById("hostLabel").textContent = hostName();
+  renderFilters();
+  const content = document.getElementById("content");
+  const term = searchTerm.toLowerCase();
+
+  let list = state.dashboards.filter(d=>{
+    const inCat = activeFilter==="All" || (activeFilter==="Pinned"?d.pinned:d.category===activeFilter);
+    const inSearch = !term ||
+      (d.name||"").toLowerCase().includes(term) ||
+      (d.description||"").toLowerCase().includes(term) ||
+      (d.category||"").toLowerCase().includes(term);
+    return inCat && inSearch;
+  });
+
+  if(state.dashboards.length===0){
+    content.innerHTML = emptyState();
+    document.getElementById("emptyAdd").onclick = openAdd;
+    return;
+  }
+  if(list.length===0){
+    content.innerHTML = `<div class="empty"><h3>Nothing matches</h3><p>Try a different search or filter.</p></div>`;
+    return;
+  }
+
+  // group: pinned first, then by category
+  const pinned = list.filter(d=>d.pinned);
+  const rest = list.filter(d=>!d.pinned);
+  let html = "";
+  if(pinned.length && activeFilter!=="Pinned"){
+    html += section("Pinned", pinned);
+  }
+  if(activeFilter==="All"){
+    const cats = {};
+    rest.forEach(d=>{ const c=d.category||"Uncategorised"; (cats[c]=cats[c]||[]).push(d); });
+    Object.keys(cats).sort((a,b)=>{
+      if(a==="Uncategorised") return 1; if(b==="Uncategorised") return -1;
+      return a.localeCompare(b);
+    }).forEach(c=>{ html += section(c, cats[c]); });
+  }else{
+    html += `<div class="section"><div class="grid">${rest.map(card).join("")}</div></div>`;
+  }
+  content.innerHTML = html;
+  wireCards();
+}
+function section(title, items){
+  return `<div class="section"><h2>${esc(title)}</h2><div class="grid">${items.map(card).join("")}</div></div>`;
+}
+function card(d){
+  const url = esc(resolveUrl(d));
+  return `<div class="card" style="animation-delay:${Math.random()*0.12}s">
+    <div class="card-tools">
+      <button class="tool pin ${d.pinned?'on':''}" data-pin="${d.id}" title="Pin">
+        <svg class="icon" viewBox="0 0 24 24" ${d.pinned?'fill="currentColor" stroke="none"':''}><path d="m12 17.27 6.18 3.73-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+      </button>
+      <button class="tool" data-edit="${d.id}" title="Edit">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+      </button>
+      <button class="tool" data-del="${d.id}" title="Remove">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+      </button>
+    </div>
+    ${d.category?`<div class="cat">${esc(d.category)}</div>`:''}
+    <h3>${esc(d.name||"Untitled dashboard")}</h3>
+    ${d.description?`<p>${esc(d.description)}</p>`:'<p style="opacity:.55">No description</p>'}
+    <a class="open" href="${url}" target="_blank" rel="noopener">
+      Open ${d.type==="question"?"question":"dashboard"}
+      <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>`;
+}
+function emptyState(){
+  return `<div class="empty">
+    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+    <h3>No dashboards yet</h3>
+    <p>Add your most-used Metabase dashboards once and they'll live here permanently. No more hunting through favourites.</p>
+    <button class="btn btn-primary" id="emptyAdd">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      Add your first dashboard
+    </button>
+  </div>`;
+}
+function renderFilters(){
+  const wrap = document.getElementById("filters");
+  const cats = categories();
+  const opts = ["All"];
+  if(state.dashboards.some(d=>d.pinned)) opts.push("Pinned");
+  cats.forEach(c=>opts.push(c));
+  wrap.innerHTML = opts.map(o=>`<button class="chip ${o===activeFilter?'active':''}" data-filter="${esc(o)}">${esc(o)}</button>`).join("");
+  wrap.querySelectorAll("[data-filter]").forEach(b=>{
+    b.onclick = ()=>{ activeFilter = b.dataset.filter; render(); };
+  });
+}
+function wireCards(){
+  document.querySelectorAll("[data-pin]").forEach(b=>b.onclick=()=>togglePin(b.dataset.pin));
+  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
+  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>removeDash(b.dataset.del));
+}
+
+/* ---------- actions ---------- */
+async function togglePin(id){
+  const d = state.dashboards.find(x=>x.id===id); if(!d) return;
+  d.pinned = !d.pinned; await save(); render();
+}
+async function removeDash(id){
+  const d = state.dashboards.find(x=>x.id===id);
+  if(!confirm(`Remove "${d?d.name:'this dashboard'}" from the portal?`)) return;
+  state.dashboards = state.dashboards.filter(x=>x.id!==id);
+  await save(); render();
+}
+
+/* ---------- modal ---------- */
+const modal = document.getElementById("modal");
+function openAdd(){
+  editingId = null;
+  document.getElementById("modalTitle").textContent = "Add a dashboard";
+  document.getElementById("fLink").value = "";
+  document.getElementById("fName").value = "";
+  document.getElementById("fDesc").value = "";
+  document.getElementById("fCat").value = "";
+  setTypeUI("dashboard");
+  renderCatSuggest();
+  modal.classList.add("show");
+  setTimeout(()=>document.getElementById("fLink").focus(),50);
+}
+function openEdit(id){
+  const d = state.dashboards.find(x=>x.id===id); if(!d) return;
+  editingId = id;
+  document.getElementById("modalTitle").textContent = "Edit dashboard";
+  document.getElementById("fLink").value = d.url||"";
+  document.getElementById("fName").value = d.name||"";
+  document.getElementById("fDesc").value = d.description||"";
+  document.getElementById("fCat").value = d.category||"";
+  setTypeUI(d.type||"dashboard");
+  renderCatSuggest();
+  modal.classList.add("show");
+}
+function closeModal(){ modal.classList.remove("show"); }
+function renderCatSuggest(){
+  const wrap = document.getElementById("catSuggest");
+  const cats = categories();
+  wrap.innerHTML = cats.map(c=>`<button type="button">${esc(c)}</button>`).join("");
+  wrap.querySelectorAll("button").forEach(b=>b.onclick=()=>{document.getElementById("fCat").value=b.textContent;});
+}
+async function saveDash(){
+  const linkRaw = document.getElementById("fLink").value.trim();
+  let name = document.getElementById("fName").value.trim();
+  const desc = document.getElementById("fDesc").value.trim();
+  const cat = document.getElementById("fCat").value.trim();
+  if(!linkRaw){ alert("Please paste a Metabase link or dashboard ID."); return; }
+  const parsed = parseLink(linkRaw);
+  const type = parsed.type || chosenType;
+  const autoName = !name;            // user left name blank -> try to fetch it from Metabase
+  if(!name) name = parsed.name || "Untitled";
+
+  if(editingId){
+    const d = state.dashboards.find(x=>x.id===editingId);
+    Object.assign(d, {url:parsed.url, name, description:desc, category:cat, type, autoName});
+  }else{
+    state.dashboards.push({ id:uid(), url:parsed.url, name, description:desc, category:cat, type, pinned:false, autoName });
+  }
+  await save(); closeModal(); render(); refreshNames();
+}
+
+/* auto-fill name from link when blank */
+document.getElementById("fLink").addEventListener("blur", ()=>{
+  const p = parseLink(document.getElementById("fLink").value);
+  if(p.type) setTypeUI(p.type);
+  const nameField = document.getElementById("fName");
+  if(nameField.value.trim()) return;
+  if(p.name) nameField.value = p.name;
+});
+
+/* settings */
+const settingsModal = document.getElementById("settingsModal");
+document.getElementById("settingsBtn").onclick = ()=>{
+  document.getElementById("fBase").value = state.baseUrl;
+  settingsModal.classList.add("show");
+};
+document.getElementById("settingsCancel").onclick = ()=>settingsModal.classList.remove("show");
+document.getElementById("settingsSave").onclick = async ()=>{
+  const v = document.getElementById("fBase").value.trim();
+  if(v) state.baseUrl = v;
+  await save(); settingsModal.classList.remove("show"); render();
+};
+
+/* wiring */
+document.getElementById("addBtn").onclick = openAdd;
+document.querySelectorAll("#typeSeg button").forEach(b=>b.onclick=()=>setTypeUI(b.dataset.type));
+document.getElementById("cancelBtn").onclick = closeModal;
+document.getElementById("saveBtn").onclick = saveDash;
+modal.onclick = e=>{ if(e.target===modal) closeModal(); };
+settingsModal.onclick = e=>{ if(e.target===settingsModal) settingsModal.classList.remove("show"); };
+document.getElementById("searchInput").addEventListener("input", e=>{ searchTerm=e.target.value; render(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeModal(); settingsModal.classList.remove("show"); }});
+
+/* boot */
+(async ()=>{ await load(); render(); refreshNames(); })();
+</script>
