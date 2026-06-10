@@ -1,0 +1,8 @@
+{
+  "name": "metabase-dashboard-portal",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "redis": "^4.7.0"
+  }
+}
