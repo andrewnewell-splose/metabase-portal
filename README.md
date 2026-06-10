@@ -1,48 +1,51 @@
-# Dashboard Portal
+# Dashboard Portal (shared)
 
-A single-page launchpad for your Metabase dashboards and questions. Add a link once
-(full URL or just an ID), and it becomes a permanent tile with search, pinning, and
-categories. Everything is saved in the browser, so each person curates their own set
-on top of the shared starting tiles baked into the page.
+A single launchpad for your Metabase dashboards and questions. Tiles are stored
+centrally, so anything one person adds is seen by everyone. Anyone with the link can
+view; adding or editing requires a shared team passcode.
 
 ## Files
 
-- `index.html` — the portal (works on its own)
-- `api/mb-name.js` — optional Vercel function that fetches the real name of a
-  question/dashboard so tiles can name themselves
+- `index.html` - the portal page
+- `api/data.js` - the shared list (read/write), backed by Upstash Redis
+- `api/mb-name.js` - looks up a question/dashboard's real name from Metabase
 
-## Deploy to Vercel
+## One-time setup on Vercel
 
-From this folder:
+1. Deploy the project (drag the folder into Vercel, or run `npx vercel` then
+   `npx vercel --prod` from this folder). You get a live URL.
 
-```bash
-npx vercel        # first run links/creates the project and gives a preview URL
-npx vercel --prod # promote to your production URL
-```
+2. Add the database. In your project on vercel.com, open the **Storage** tab, choose
+   **Redis (Upstash)** from the Marketplace, and create a database on the free plan.
+   Accept the prompt to connect it to this project. This injects the connection
+   credentials as environment variables automatically (no copying needed).
 
-Or drag this folder into the Vercel dashboard. Vercel serves `index.html` as the site
-and turns `api/mb-name.js` into a function at `/api/mb-name` automatically. No build
-step or config needed.
+3. Set the team passcode. Go to **Settings > Environment Variables** and add:
+   - `PORTAL_ADMIN_KEY` = any phrase you choose. Share it only with people allowed
+     to edit. Without it set, the portal is view-only for everyone.
 
-## Automatic names
+4. Redeploy so the new variables take effect: run `npx vercel --prod` again, or in the
+   Git workflow just push any small change.
 
-When you add a tile and leave the name blank, the page asks `/api/mb-name` for the real
-title and fills it in.
+That's it. Open the URL, click **Unlock to edit**, enter the passcode, and add tiles.
+Everyone else sees them immediately (a tab refresh or revisit pulls the latest).
 
-- **Public links** (`/public/question/...`, `/public/dashboard/...`) resolve with no
-  extra setup.
-- **Internal links/IDs** need a Metabase API key so the function can read them. Set it
-  in Vercel under Project > Settings > Environment Variables:
-  - `METABASE_API_KEY` — create one in Metabase: Admin > Settings > Authentication > API keys
-  - `METABASE_BASE_URL` — only if your Metabase URL differs from the default
-- Full internal links that include a slug (e.g. `/dashboard/42-revenue-overview`) are
-  named from the slug even without the key.
+## Optional: names for internal (login-only) reports
 
-If a name can't be fetched, the tile keeps whatever you typed, and you can always rename
-it with the edit (pencil) button.
+Public links name themselves with no setup. To auto-name internal dashboards/questions,
+add a Metabase API key as an environment variable named `METABASE_API_KEY` (create one
+in Metabase: Admin > Settings > Authentication > API keys). Without it, internal tiles
+use their URL slug or whatever name you type.
 
-## Changing the shared starting tiles
+## How it works
 
-The baked-in tiles everyone sees live in the `SEED` constant near the top of the
-`<script>` in `index.html`. Edit that list and redeploy to update the defaults for new
-visitors.
+- The page reads the list from `/api/data` (same origin, so no CORS).
+- Edits POST to `/api/data` with the passcode in an `x-portal-key` header. The function
+  checks it against `PORTAL_ADMIN_KEY`, applies the single change to the stored JSON in
+  Redis, and returns the updated list. The Redis token never reaches the browser.
+- The passcode is remembered in the editor's browser so they don't retype it each time.
+
+## Changing the default seed
+
+If Redis is empty, the function serves a default list (see `DEFAULT_DATA` in
+`api/data.js`). Once anything is saved, the stored list takes over.

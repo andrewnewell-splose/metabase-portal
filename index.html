@@ -154,6 +154,12 @@
   .seg button.active{background:var(--accent);color:#fff}
   .seg button:not(.active):hover{color:var(--accent-ink)}
 
+  /* editing controls only show when unlocked */
+  body:not(.editing) #addBtn,
+  body:not(.editing) #settingsBtn{display:none}
+  body:not(.editing) .card-tools{display:none !important}
+  #lockBtn.on{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+
   .footnote{text-align:center;color:var(--muted);font-size:12.5px;margin-top:46px}
   .footnote code{background:#fff;border:1px solid var(--line);padding:2px 6px;border-radius:6px;font-size:12px}
 
@@ -174,6 +180,7 @@
       <div class="sub">Your launchpad into <b id="hostLabel">Metabase</b></div>
     </div>
     <div class="head-actions">
+      <button class="btn btn-ghost" id="lockBtn">Unlock to edit</button>
       <button class="btn btn-ghost" id="settingsBtn">
         <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.2.61.78 1.05 1.51 1.05H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Base URL
@@ -196,7 +203,7 @@
   <div id="content"></div>
 
   <div class="footnote">
-    Saved automatically in this artifact. Tip: paste a full Metabase link (dashboard or question) and the type is detected for you.
+    Shared across the team. Changes you make are saved centrally and seen by everyone. Unlock with the team passcode to add or edit.
   </div>
 </div>
 
@@ -252,11 +259,28 @@
   </div>
 </div>
 
-<script>
-const KEY = "portal-data";
-const DEFAULT_BASE = "https://splose.metabaseapp.com";
+<!-- Unlock modal -->
+<div class="overlay" id="unlockModal">
+  <div class="modal">
+    <h2>Unlock editing</h2>
+    <p class="lead">Enter the team passcode to add or change tiles. Anyone can view the portal without it.</p>
+    <div class="field">
+      <label>Team passcode</label>
+      <input id="fKey" type="password" placeholder="Passcode" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="unlockCancel">Cancel</button>
+      <button class="btn btn-primary" id="unlockSave">Unlock</button>
+    </div>
+  </div>
+</div>
 
-// Baked-in starting set. Anyone opening a fresh copy of the hosted page sees these.
+<script>
+const DEFAULT_BASE = "https://splose.metabaseapp.com";
+const API = "/api/data";          // shared datastore (same origin, no CORS)
+const KEY_STORE = "portal-admin-key";
+
+// Fallback list, shown only when the shared API isn't reachable (e.g. local preview).
 const SEED = {
   baseUrl: DEFAULT_BASE,
   dashboards: [
@@ -267,8 +291,7 @@ const SEED = {
       description: "Public Metabase question.",
       category: "Shared",
       type: "question",
-      pinned: true,
-      autoName: false
+      pinned: true
     }
   ]
 };
@@ -276,41 +299,43 @@ const SEED = {
 let state = { baseUrl: DEFAULT_BASE, dashboards: [] };
 let activeFilter = "All";
 let searchTerm = "";
+let adminKey = "";        // team passcode held in memory
+let unlocked = false;     // whether editing controls are shown
+let apiLive = false;      // whether the shared API answered
 
-/* ---------- storage adapter ----------
-   Uses Claude's artifact storage when present (preview inside Claude),
-   otherwise falls back to the browser's localStorage (hosted anywhere). */
-const hasClaudeStorage = (typeof window !== "undefined") && window.storage && typeof window.storage.get === "function";
-async function storeGet(key){
-  if(hasClaudeStorage){
-    try{ const r = await window.storage.get(key); return (r && r.value) ? r.value : null; }
-    catch(e){ return null; }
-  }
-  try{ return localStorage.getItem(key); }catch(e){ return null; }
-}
-async function storeSet(key, val){
-  if(hasClaudeStorage){
-    try{ await window.storage.set(key, val); }catch(e){ console.error("save failed", e); }
-    return;
-  }
-  try{ localStorage.setItem(key, val); }catch(e){ console.error("save failed", e); }
-}
+function loadKey(){ try{ return localStorage.getItem(KEY_STORE) || ""; }catch(e){ return ""; } }
+function saveKey(k){ try{ k ? localStorage.setItem(KEY_STORE, k) : localStorage.removeItem(KEY_STORE); }catch(e){} }
 
-/* ---------- persistence ---------- */
+/* ---------- shared data via API ---------- */
 async function load(){
-  const raw = await storeGet(KEY);
-  if(raw){
-    try{
-      const parsed = JSON.parse(raw);
-      state = { baseUrl: parsed.baseUrl || DEFAULT_BASE, dashboards: parsed.dashboards || [] };
+  try{
+    const r = await fetch(API, { headers:{ Accept:"application/json" } });
+    if(r.ok){
+      const d = await r.json();
+      state = { baseUrl: d.baseUrl || DEFAULT_BASE, dashboards: d.dashboards || [] };
+      apiLive = true;
       return;
-    }catch(e){ /* fall through to seed */ }
-  }
+    }
+  }catch(e){ /* not reachable here */ }
+  apiLive = false; // preview / offline fallback
   state = { baseUrl: SEED.baseUrl, dashboards: SEED.dashboards.map(d=>({...d})) };
-  await save();
 }
-async function save(){
-  await storeSet(KEY, JSON.stringify(state));
+
+// Send a change to the shared store. Server applies it and returns the new state.
+async function apiOp(op, payload){
+  if(!apiLive){ alert("Editing works on the deployed site, not in this preview."); return false; }
+  try{
+    const r = await fetch(API, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "x-portal-key": adminKey },
+      body: JSON.stringify({ op, ...payload })
+    });
+    if(r.status===401){ relock(); alert("That passcode wasn't accepted. Please unlock again."); openUnlock(); return false; }
+    if(!r.ok){ alert("Couldn't save the change. Please try again."); return false; }
+    const d = await r.json();
+    state = { baseUrl: d.baseUrl || DEFAULT_BASE, dashboards: d.dashboards || [] };
+    return true;
+  }catch(e){ alert("Network error while saving."); return false; }
 }
 
 let editingId = null;
@@ -377,17 +402,6 @@ async function fetchName(d){
   }catch(e){ /* CORS / network */ }
   return null;
 }
-async function refreshNames(){
-  const targets = state.dashboards.filter(d=>d.autoName);
-  if(!targets.length) return;
-  let changed = false;
-  for(const d of targets){
-    const name = await fetchName(d);
-    if(name && name !== d.name){ d.name = name; changed = true; }
-    if(name){ d.autoName = false; } // got it once, stop re-asking
-  }
-  if(changed){ await save(); render(); }
-}
 
 /* ---------- render ---------- */
 function categories(){
@@ -412,7 +426,8 @@ function render(){
 
   if(state.dashboards.length===0){
     content.innerHTML = emptyState();
-    document.getElementById("emptyAdd").onclick = openAdd;
+    const ea = document.getElementById("emptyAdd");
+    if(ea) ea.onclick = openAdd;
     return;
   }
   if(list.length===0){
@@ -467,14 +482,14 @@ function card(d){
   </div>`;
 }
 function emptyState(){
+  const cta = unlocked
+    ? `<button class="btn btn-primary" id="emptyAdd"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add the first report</button>`
+    : `<p style="color:var(--muted)">Unlock editing to add the team's reports.</p>`;
   return `<div class="empty">
     <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-    <h3>No dashboards yet</h3>
-    <p>Add your most-used Metabase dashboards once and they'll live here permanently. No more hunting through favourites.</p>
-    <button class="btn btn-primary" id="emptyAdd">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      Add your first dashboard
-    </button>
+    <h3>No reports yet</h3>
+    <p>Add your most-used Metabase dashboards and questions once, and the whole team sees them here.</p>
+    ${cta}
   </div>`;
 }
 function renderFilters(){
@@ -497,13 +512,12 @@ function wireCards(){
 /* ---------- actions ---------- */
 async function togglePin(id){
   const d = state.dashboards.find(x=>x.id===id); if(!d) return;
-  d.pinned = !d.pinned; await save(); render();
+  if(await apiOp("pin", { id, pinned: !d.pinned })) render();
 }
 async function removeDash(id){
   const d = state.dashboards.find(x=>x.id===id);
-  if(!confirm(`Remove "${d?d.name:'this dashboard'}" from the portal?`)) return;
-  state.dashboards = state.dashboards.filter(x=>x.id!==id);
-  await save(); render();
+  if(!confirm(`Remove "${d?d.name:'this report'}" for everyone?`)) return;
+  if(await apiOp("delete", { id })) render();
 }
 
 /* ---------- modal ---------- */
@@ -547,16 +561,19 @@ async function saveDash(){
   if(!linkRaw){ alert("Please paste a Metabase link or dashboard ID."); return; }
   const parsed = parseLink(linkRaw);
   const type = parsed.type || chosenType;
-  const autoName = !name;            // user left name blank -> try to fetch it from Metabase
-  if(!name) name = parsed.name || "Untitled";
 
+  // resolve a name if the user left it blank: slug first, then a live lookup
+  if(!name) name = parsed.name || "";
+  if(!name){ const fetched = await fetchName({ url: parsed.url, type }); if(fetched) name = fetched; }
+  if(!name) name = "Untitled";
+
+  let ok;
   if(editingId){
-    const d = state.dashboards.find(x=>x.id===editingId);
-    Object.assign(d, {url:parsed.url, name, description:desc, category:cat, type, autoName});
+    ok = await apiOp("update", { id: editingId, fields:{ url:parsed.url, name, description:desc, category:cat, type } });
   }else{
-    state.dashboards.push({ id:uid(), url:parsed.url, name, description:desc, category:cat, type, pinned:false, autoName });
+    ok = await apiOp("add", { dashboard:{ id:uid(), url:parsed.url, name, description:desc, category:cat, type, pinned:false } });
   }
-  await save(); closeModal(); render(); refreshNames();
+  if(ok){ closeModal(); render(); }
 }
 
 /* auto-fill name from link when blank */
@@ -577,8 +594,7 @@ document.getElementById("settingsBtn").onclick = ()=>{
 document.getElementById("settingsCancel").onclick = ()=>settingsModal.classList.remove("show");
 document.getElementById("settingsSave").onclick = async ()=>{
   const v = document.getElementById("fBase").value.trim();
-  if(v) state.baseUrl = v;
-  await save(); settingsModal.classList.remove("show"); render();
+  if(await apiOp("setBase", { baseUrl: v || DEFAULT_BASE })){ settingsModal.classList.remove("show"); render(); }
 };
 
 /* wiring */
@@ -589,8 +605,43 @@ document.getElementById("saveBtn").onclick = saveDash;
 modal.onclick = e=>{ if(e.target===modal) closeModal(); };
 settingsModal.onclick = e=>{ if(e.target===settingsModal) settingsModal.classList.remove("show"); };
 document.getElementById("searchInput").addEventListener("input", e=>{ searchTerm=e.target.value; render(); });
-document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeModal(); settingsModal.classList.remove("show"); }});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeModal(); settingsModal.classList.remove("show"); unlockModal.classList.remove("show"); }});
+
+/* unlock / lock */
+const unlockModal = document.getElementById("unlockModal");
+function setUnlocked(on){
+  unlocked = on;
+  document.body.classList.toggle("editing", on);
+  const btn = document.getElementById("lockBtn");
+  btn.textContent = on ? "Editing unlocked" : "Unlock to edit";
+  btn.classList.toggle("on", on);
+}
+function relock(){ adminKey = ""; saveKey(""); setUnlocked(false); }
+function openUnlock(){
+  document.getElementById("fKey").value = adminKey || "";
+  unlockModal.classList.add("show");
+  setTimeout(()=>document.getElementById("fKey").focus(),50);
+}
+document.getElementById("lockBtn").onclick = ()=>{ if(unlocked){ relock(); render(); } else { openUnlock(); } };
+document.getElementById("unlockCancel").onclick = ()=>unlockModal.classList.remove("show");
+document.getElementById("unlockSave").onclick = ()=>{
+  const k = document.getElementById("fKey").value.trim();
+  adminKey = k; saveKey(k); setUnlocked(!!k);
+  unlockModal.classList.remove("show"); render();
+};
+unlockModal.onclick = e=>{ if(e.target===unlockModal) unlockModal.classList.remove("show"); };
+document.getElementById("fKey").addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("unlockSave").click(); });
+
+/* show others' changes when returning to the tab */
+document.addEventListener("visibilitychange", async ()=>{
+  if(document.visibilityState==="visible" && apiLive){ await load(); render(); }
+});
 
 /* boot */
-(async ()=>{ await load(); render(); refreshNames(); })();
+(async ()=>{
+  adminKey = loadKey();
+  await load();
+  setUnlocked(!!adminKey);
+  render();
+})();
 </script>
