@@ -1,6 +1,6 @@
 # Dashboard Portal (shared)
 
-A single launchpad for your Metabase dashboards and questions. Tiles are stored
+A single launchpad for your Metabase & Pipedrive dashboards and questions. Tiles are stored
 centrally, so anything one person adds is seen by everyone. Anyone with the link can
 view; adding or editing requires a shared team passcode.
 
