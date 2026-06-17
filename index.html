@@ -177,7 +177,7 @@
   <header class="top">
     <div class="brand">
       <h1>Dashboard Portal</h1>
-      <div class="sub">Your launchpad into <b id="hostLabel">Metabase</b></div>
+      <div class="sub">Your launchpad into <b id="hostLabel">Metabase &amp; Pipedrive</b></div>
     </div>
     <div class="head-actions">
       <button class="btn btn-ghost" id="lockBtn">Unlock to edit</button>
@@ -187,7 +187,7 @@
       </button>
       <button class="btn btn-primary" id="addBtn">
         <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        Add dashboard
+        Add report
       </button>
     </div>
   </header>
@@ -195,7 +195,7 @@
   <div class="toolbar">
     <div class="search">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="searchInput" type="text" placeholder="Search dashboards…" autocomplete="off">
+      <input id="searchInput" type="text" placeholder="Search reports…" autocomplete="off">
     </div>
     <div class="filters" id="filters"></div>
   </div>
@@ -210,21 +210,21 @@
 <!-- Add / edit modal -->
 <div class="overlay" id="modal">
   <div class="modal">
-    <h2 id="modalTitle">Add a dashboard</h2>
-    <p class="lead">Paste the Metabase link or just the dashboard ID. Everything else is optional.</p>
+    <h2 id="modalTitle">Add a report</h2>
+    <p class="lead">Paste a Metabase or Pipedrive link, or a Metabase dashboard/question ID. Everything else is optional.</p>
     <div class="field">
-      <label>Link or ID <span class="hint">e.g. https://splose.metabaseapp.com/dashboard/42 or just 42</span></label>
-      <input id="fLink" type="text" placeholder="42  ·  or full URL">
+      <label>Link or ID <span class="hint">a Metabase link, a Pipedrive share link, or just a Metabase ID like 42</span></label>
+      <input id="fLink" type="text" placeholder="Paste a link, or a Metabase ID">
     </div>
     <div class="field">
-      <label>Type <span class="hint">used when you enter just an ID; auto-detected from full links</span></label>
+      <label>Type <span class="hint">for a Metabase ID; full links open as-is</span></label>
       <div class="seg" id="typeSeg">
         <button type="button" data-type="dashboard" class="active">Dashboard</button>
         <button type="button" data-type="question">Question</button>
       </div>
     </div>
     <div class="field">
-      <label>Name</label>
+      <label>Name <span class="hint">Pipedrive links can't auto-name, so add one here</span></label>
       <input id="fName" type="text" placeholder="Revenue overview">
     </div>
     <div class="field">
@@ -238,7 +238,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
-      <button class="btn btn-primary" id="saveBtn">Save dashboard</button>
+      <button class="btn btn-primary" id="saveBtn">Save report</button>
     </div>
   </div>
 </div>
@@ -354,6 +354,26 @@ function resolveUrl(d){
   return base + "/" + type + "/" + encodeURIComponent(d.url);
 }
 function esc(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+// Which tool a tile points at, from its URL (bare IDs are treated as Metabase).
+function sourceOf(d){
+  const u = d.url || "";
+  try{
+    if(/^https?:\/\//i.test(u)){
+      const host = new URL(u).host;
+      if(/pipedrive\.com$/i.test(host)) return "pipedrive";
+      if(/metabase/i.test(host)) return "metabase";
+      return "other";
+    }
+  }catch(e){}
+  return "metabase";
+}
+function sourceLabel(d){ const s=sourceOf(d); return s==="pipedrive"?"Pipedrive":s==="other"?"Link":"Metabase"; }
+function openLabel(d){
+  const s = sourceOf(d);
+  if(s==="pipedrive") return "Open in Pipedrive";
+  if(s==="other") return "Open";
+  return d.type==="question" ? "Open question" : "Open dashboard";
+}
 function hostName(){
   try{ return new URL(state.baseUrl).host; }catch(e){ return "Metabase"; }
 }
@@ -410,7 +430,6 @@ function categories(){
   return [...set].sort((a,b)=>a.localeCompare(b));
 }
 function render(){
-  document.getElementById("hostLabel").textContent = hostName();
   renderFilters();
   const content = document.getElementById("content");
   const term = searchTerm.toLowerCase();
@@ -472,11 +491,11 @@ function card(d){
         <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
       </button>
     </div>
-    ${d.category?`<div class="cat">${esc(d.category)}</div>`:''}
-    <h3>${esc(d.name||"Untitled dashboard")}</h3>
+    <div class="cat">${esc(d.category || sourceLabel(d))}</div>
+    <h3>${esc(d.name||"Untitled report")}</h3>
     ${d.description?`<p>${esc(d.description)}</p>`:'<p style="opacity:.55">No description</p>'}
     <a class="open" href="${url}" target="_blank" rel="noopener">
-      Open ${d.type==="question"?"question":"dashboard"}
+      ${openLabel(d)}
       <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
   </div>`;
@@ -524,7 +543,7 @@ async function removeDash(id){
 const modal = document.getElementById("modal");
 function openAdd(){
   editingId = null;
-  document.getElementById("modalTitle").textContent = "Add a dashboard";
+  document.getElementById("modalTitle").textContent = "Add a report";
   document.getElementById("fLink").value = "";
   document.getElementById("fName").value = "";
   document.getElementById("fDesc").value = "";
@@ -537,7 +556,7 @@ function openAdd(){
 function openEdit(id){
   const d = state.dashboards.find(x=>x.id===id); if(!d) return;
   editingId = id;
-  document.getElementById("modalTitle").textContent = "Edit dashboard";
+  document.getElementById("modalTitle").textContent = "Edit report";
   document.getElementById("fLink").value = d.url||"";
   document.getElementById("fName").value = d.name||"";
   document.getElementById("fDesc").value = d.description||"";
